@@ -1,5 +1,5 @@
 (set-env!
-  :source-paths #{"src"}
+  :source-paths #{"src/lwhorton"}
   :dependencies '[
                   [org.clojure/clojure "1.8.0" :scope "provided"]
                   [me.raynes/conch "0.8.0"]
@@ -12,6 +12,7 @@
   "Build a jar and install to local maven repo."
   []
   (comp
+    (watch)
     (pom)
     (jar)
     (install)

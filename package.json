@@ -1,0 +1,21 @@
+{
+  "name": "boot-stylus",
+  "version": "0.0.1",
+  "description": "\"Compile .styl to .css modules via boot, stylus, and postcss\"",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "lwhorton@me.com",
+  "license": "MIT",
+  "bin": {
+      "postcss": "./src/lwhorton/boot_stylus/postcss.js"
+  },
+  "dependencies": {
+    "postcss": "5.0.21",
+    "postcss-modules": "0.5.0"
+  }
+}

@@ -1,4 +1,4 @@
-(ns lwhorton.runtime
+(ns boot-stylus.generator
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]))
 
@@ -14,10 +14,10 @@
     [edn css]))
 
 (defn- create-namespace [name]
-  (str "(ns " name " (:require [css-modules.runtime]))"))
+  (str "(ns " name " (:require [boot-stylus.runtime]))"))
 
 (defn- str-initializer [id css]
-  (let [update-fn (symbol "css-modules.runtime" "update-stylesheet!")
+  (let [update-fn (symbol "boot-stylus.runtime" "update-stylesheet!")
         full-name (str (symbol (str *ns*) (name id)))
         sheet {:name full-name :source css}]
     `(do

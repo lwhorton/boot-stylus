@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 var path = require('path')
 var fs = require('fs')
 var postcss = require('postcss')
@@ -35,7 +34,5 @@ fs.readFile(infile, function (err, data) {
         process.stdout.write('~css~' + result.css + '~css~')
     })
 })
-
-
 
 
