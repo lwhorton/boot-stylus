@@ -1,5 +1,5 @@
 (set-env!
-  :source-paths #{"src/cljs" "../src/lwhorton"}
+  :source-paths #{"src/cljs"}
   :resource-paths #{"resources"}
   :checkouts '[[lwhorton/boot-stylus "0.0.1"]]
   :dependencies '[
@@ -15,7 +15,7 @@
 (require
   '[boot.core :refer [deftask]]
   '[pandeiro.boot-http :refer [serve]]
-  '[boot-stylus.core :refer [stylus]]
+  '[lwhorton.boot-stylus.core :refer [stylus]]
   '[adzerk.boot-cljs :refer [cljs]]
   '[adzerk.boot-reload :refer [reload]]
   )

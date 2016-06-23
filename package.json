@@ -1,7 +1,11 @@
 {
   "name": "boot-stylus",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "\"Compile .styl to .css modules via boot, stylus, and postcss\"",
+  "repository": {
+      "type": "git",
+      "url": "https://github.com/lwhorton/boot-stylus.git"
+  },
   "directories": {
     "example": "example",
     "test": "test"

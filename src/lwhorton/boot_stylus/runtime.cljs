@@ -1,4 +1,4 @@
-(ns boot-stylus.runtime)
+(ns lwhorton.boot-stylus.runtime)
 
 (defonce style-tags (atom {}))
 

@@ -1,4 +1,4 @@
-(ns boot-stylus.core
+(ns lwhorton.boot-stylus.core
   {:boot/export-tasks true}
   (:require
     [boot.core :as c :refer [deftask]]
@@ -7,7 +7,7 @@
     [boot.util :as u]
     [me.raynes.conch :as conch]
     [me.raynes.conch.low-level :as co]
-    [boot-stylus.generator :as generator]
+    [lwhorton.boot-stylus.generator :as generator]
     )
   )
 
@@ -54,9 +54,7 @@
     (c/with-pre-wrap fileset
       (let [diff (c/fileset-diff @prev fileset)
             in-files (c/input-files diff)
-            css (c/by-ext [".css"] in-files)
-            postcss (first (c/by-name ["postcss.js"] (c/input-files fileset)))
-            postcss-runnable (c/tmp-file postcss)]
+            css (c/by-ext [".css"] in-files)]
         (reset! prev fileset)
         (when (seq css)
           (u/info "Converting %d css-modules.\n" (count css))

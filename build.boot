@@ -1,33 +1,47 @@
 (set-env!
-  :source-paths #{"src/lwhorton"}
+  :resource-paths #{"src"}
   :dependencies '[
                   [org.clojure/clojure "1.8.0" :scope "provided"]
                   [me.raynes/conch "0.8.0"]
                   ]
+  :repositories #(conj % ["clojars" {:url "https://clojars.org/repo/"
+                                     :username (System/getenv "CLOJARS_USER")
+                                     :password (System/getenv "CLOJARS_PASS")}])
   )
 
-(def +version+ "0.0.1")
+(require '[boot.task.built-in :refer [push]])
 
-(deftask build-jar
+(def +version+ "0.0.2")
+
+(deftask build
+  "Build the jar in prep for deploy."
+  []
+  (comp
+    (pom)
+    (jar)
+    identity))
+
+(deftask dev
   "Build a jar and install to local maven repo."
   []
   (comp
     (watch)
-    (pom)
-    (jar)
+    (build)
     (install)
     identity))
 
-(deftask dev
-  "Rebuilt POM on change for fast iteration."
+(deftask deploy
   []
   (comp
-    (watch)
-    (build-jar)
-    identity))
+    (build)
+    (push :repo "clojars")))
 
 (task-options!
   pom {:project 'lwhorton/boot-stylus
        :version +version+
-       :description "Boot task to compile stylus files to css-module clojure namespaces."})
+       :description "Boot task to compile stylus files to css-module clojure namespaces."
+       :url "https://github.com/lwhorton/boot-stylus"
+       :scm {:url "https://github.com/lwhorton/boot-stylus"}
+       }
+  )
 
