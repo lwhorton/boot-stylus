@@ -17,7 +17,7 @@
   (conch/with-programs [stylus]
     ;; for stylus to not choke we need the file to exist
     (doto out-file io/make-parents c/touch)
-    (apply stylus ["--include-css" "-o" (.getPath out-file) in-file])))
+    (apply stylus ["-o" (.getPath out-file) in-file])))
 
 (defn- get-namespace
   "Convert an out-path filepath like factors_context/factor_analyze/style.css
@@ -72,12 +72,17 @@
                                       (.getPath in-file)
                                       (.getPath out-file)
                                       hash)
-                             :out)]
-                (doto out-file io/make-parents (spit (generator/create-module namespace stdout)))))))
-        (-> fileset
-            (c/add-resource hash-cache)
-            (c/add-resource tmp)
-            c/commit!)))))
+                             :out
+                             :err u/fail)
+                    module (generator/create-module namespace stdout)]
+                (if (:err module)
+                  (do
+                    (u/fail (:err module)))
+                  (doto out-file io/make-parents (spit module)))))))
+      (-> fileset
+          (c/add-resource hash-cache)
+          (c/add-resource tmp)
+          c/commit!)))))
 
 (deftask compile-stylus
   "Compile all .styl files in the fileset into .css files"
