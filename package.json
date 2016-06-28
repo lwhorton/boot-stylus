@@ -3,8 +3,8 @@
   "version": "0.0.2",
   "description": "\"Compile .styl to .css modules via boot, stylus, and postcss\"",
   "repository": {
-      "type": "git",
-      "url": "https://github.com/lwhorton/boot-stylus.git"
+    "type": "git",
+    "url": "https://github.com/lwhorton/boot-stylus.git"
   },
   "directories": {
     "example": "example",
@@ -16,10 +16,11 @@
   "author": "lwhorton@me.com",
   "license": "MIT",
   "bin": {
-      "postcss": "./src/lwhorton/boot_stylus/postcss.js"
+    "postcss": "./src/lwhorton/boot_stylus/postcss.js"
   },
   "dependencies": {
     "postcss": "5.0.21",
-    "postcss-modules": "0.5.0"
+    "postcss-modules": "0.5.0",
+    "stylus": "0.54.5"
   }
 }
