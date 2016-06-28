@@ -11,7 +11,7 @@
     )
   )
 
-(defn write-style!
+(defn- write-style!
   "Use the Stylus api to compile in-file (styl) to out-file (css)."
   [in-file out-file]
   (conch/with-programs [stylus]
