@@ -8,6 +8,12 @@ is an attempt to make css more modular. Since I hate writing
 css so much, I wanted to go one step further and utilize [stylus](http://stylus-lang.com/). Thus was born boot-stylus, a boot task to convert `.styl` files inside your `:source-paths` into cljs modules that can be brought in via clojure's standard `(:require [module])`.
 
 ## How to use
+
+> ¡IMPORTANT!
+
+boot-stylus currently depends on two node modules: [postcss](https://github.com/postcss/postcss) and [stylus cli](http://stylus-lang.com/docs/executable.html). Before attempting
+anything below, install them by running `npm install -g` in the root of this repo (sorry I couldn't find a turn-key solution in the clojure-java world).
+
 List boot-stylus as a depencency:
 ```clojure
 (set-env!
@@ -69,7 +75,3 @@ That will ultimately render the html:
 
 </div>
 ```
-
-## ¡IMPORTANT!
-
-boot-stylus currently depends on two node modules: [postcss-cli](https://github.com/postcss/postcss-cli) and [stylus cli](http://stylus-lang.com/docs/executable.html). They must be globally available, i.e. running `user$ stylus ./foo.styl > ./bar.css` from the terminal should work. You can install them via [npm](https://www.npmjs.com/).

@@ -1,7 +1,7 @@
 (set-env!
   :source-paths #{"src/cljs"}
   :resource-paths #{"resources"}
-  :checkouts '[[lwhorton/boot-stylus "0.0.1"]]
+  :checkouts '[[lwhorton/boot-stylus "0.0.2-SNAPSHOT"]]
   :dependencies '[
                   [org.clojure/clojure "1.8.0"]
                   [org.clojure/clojurescript "1.8.40"]

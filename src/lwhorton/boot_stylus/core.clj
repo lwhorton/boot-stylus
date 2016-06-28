@@ -72,17 +72,20 @@
                                       (.getPath in-file)
                                       (.getPath out-file)
                                       hash)
-                             :out
-                             :err u/fail)
-                    module (generator/create-module namespace stdout)]
-                (if (:err module)
-                  (do
-                    (u/fail (:err module)))
-                  (doto out-file io/make-parents (spit module)))))))
-      (-> fileset
-          (c/add-resource hash-cache)
-          (c/add-resource tmp)
-          c/commit!)))))
+                             :out)]
+                (when (or (empty? stdout) (nil? stdout))
+                  (u/fail "\"" in-path "\" did not return any css..."))
+                ;; we can have two types of "errors" here -- an error emitted by the postcss parsing
+                ;; and an error that results from a null file pointer, or empty file input, etc.
+                (if-let [module (generator/create-module namespace stdout)]
+                  (if (:err module)
+                    (u/fail (:err module))
+                    (doto out-file io/make-parents (spit module)))
+                  (u/fail "Something went wrong compiling: " in-path))))))
+        (-> fileset
+            (c/add-resource hash-cache)
+            (c/add-resource tmp)
+            c/commit!)))))
 
 (deftask compile-stylus
   "Compile all .styl files in the fileset into .css files"
