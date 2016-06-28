@@ -72,4 +72,4 @@ That will ultimately render the html:
 
 ## ¡IMPORTANT!
 
-boot-stylus currently depends on two node modules: [postcss](https://github.com/postcss/postcss) and [stylus cli](http://stylus-lang.com/docs/executable.html). They must be globally available, i.e. running `user$ stylus ./foo.styl > ./bar.css` from the terminal should work. You can install them via [npm](https://www.npmjs.com/).
+boot-stylus currently depends on two node modules: [postcss-cli](https://github.com/postcss/postcss-cli) and [stylus cli](http://stylus-lang.com/docs/executable.html). They must be globally available, i.e. running `user$ stylus ./foo.styl > ./bar.css` from the terminal should work. You can install them via [npm](https://www.npmjs.com/).
