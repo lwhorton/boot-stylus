@@ -11,14 +11,6 @@
     )
   )
 
-(defn- write-style!
-  "Use the Stylus api to compile in-file (styl) to out-file (css)."
-  [in-file out-file]
-  (conch/with-programs [stylus]
-    ;; for stylus to not choke we need the file to exist
-    (doto out-file io/make-parents c/touch)
-    (apply stylus ["-o" (.getPath out-file) in-file])))
-
 (defn- get-namespace
   "Convert an out-path filepath like factors_context/factor_analyze/style.css
   into \"factors-context.factor-analyze.style\" for use as a file namespace."
@@ -35,12 +27,7 @@
         src (io/file cache out-path)
         hash (if (.exists src) (slurp src) (uuid))]
     (doto src io/make-parents (spit hash))
-    hash)
-  )
-
-(defn- generate-node-path []
-  ;; @TODO allow options to add more paths to NODE_PATH
-  (str (System/getenv "NODE_PATH")))
+    hash))
 
 (deftask compile-css-modules
   "Compile all .css files into css-modules with a json manifest.
@@ -50,13 +37,28 @@
   []
   (let [tmp (c/tmp-dir!)
         hash-cache (c/cache-dir! ::css-modules)
-        prev (atom nil)]
+        prev (atom nil)
+        installed (atom false)]
     (c/with-pre-wrap fileset
       (let [diff (c/fileset-diff @prev fileset)
             in-files (c/input-files diff)
             css (c/by-ext [".css"] in-files)]
         (reset! prev fileset)
         (when (seq css)
+          ;; add package.json and compiler to tmp, then install npm deps into the fileset
+          (if-not @installed
+            (do
+              (u/info "Installing necessary node deps...\n")
+              (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
+                    dest (io/file tmp "package.json")]
+                (spit dest (slurp pkg)))
+              (let [compiler (io/resource "lwhorton/boot_stylus/run_postcss.js")
+                    dest (io/file tmp "run_postcss.js")]
+                (spit dest (slurp compiler)))
+              (binding [u/*sh-dir* (.getPath tmp)]
+                (u/dosh "npm" "install"))
+              (reset! installed true)))
+
           (u/info "Converting %d css-modules.\n" (count css))
           (doseq [in css]
             (let [in-file (c/tmp-file in)
@@ -67,36 +69,51 @@
                   hash (get-hash hash-cache in-path namespace)]
               (u/info (str "Generated namespace for \"" in-path "\" is \"" namespace "\"\n"))
               (u/info (str "Converting " in-path " to " out-path "...\n"))
-              (let [stdout (co/stream-to-string
-                             (co/proc "postcss"
-                                      (.getPath in-file)
-                                      (.getPath out-file)
-                                      hash)
-                             :out)]
-                (when (or (empty? stdout) (nil? stdout))
-                  (u/fail "\"" in-path "\" did not return any css..."))
-                ;; we can have two types of "errors" here -- an error emitted by the postcss parsing
-                ;; and an error that results from a null file pointer, or empty file input, etc.
-                (if-let [module (generator/create-module namespace stdout)]
-                  (if (:err module)
-                    (u/fail (:err module))
-                    (doto out-file io/make-parents (spit module)))
-                  (u/fail "Something went wrong compiling: " in-path))))))
-        (-> fileset
-            (c/add-resource hash-cache)
-            (c/add-resource tmp)
-            c/commit!)))))
+              (conch/with-programs [node]
+                (let [stdout (node "./run_postcss.js"
+                                   (.getPath in-file)
+                                   (.getPath out-file)
+                                   hash
+                                   {:dir (.getPath tmp)})]
+                  (when (or (empty? stdout) (nil? stdout))
+                    (u/fail "\"" in-path "\" did not return any css..."))
+                  ;; we can have two types of "errors" here -- an error emitted by the postcss parsing
+                  ;; and an error that results from a null file pointer, or empty file input, etc.
+                  (if-let [module (generator/create-module namespace stdout)]
+                    (if (:err module)
+                      (u/fail (:err module))
+                      (doto out-file io/make-parents (spit module)))
+                    (u/fail "Something went wrong compiling: " in-path))))))))
+      (-> fileset
+          (c/add-resource hash-cache)
+          (c/add-resource tmp)
+          c/commit!))))
 
 (deftask compile-stylus
   "Compile all .styl files in the fileset into .css files"
   []
   (let [tmp (c/tmp-dir!)
-        prev (atom nil)]
+        prev (atom nil)
+        hash-cache (c/cache-dir! ::css-modules)
+        installed (atom false)]
     (c/with-pre-wrap fileset
       (let [diff (c/fileset-diff @prev fileset)
             in-files (c/input-files diff)
             styl-files (c/by-ext [".styl"] in-files)]
         (reset! prev fileset)
+
+        ;; add package.json, then install necessary node deps (only the first run)
+        (if-not @installed
+          (do
+            (u/info "Installing necessary node deps...\n")
+            (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
+                  dest (io/file tmp "package.json")]
+              (spit dest (slurp pkg)))
+            (binding [u/*sh-dir* (.getPath tmp)]
+              (u/dosh "npm" "install"))
+            (reset! installed true)))
+
+        ;; compile stylus into css
         (when (seq styl-files)
           (u/info "Compiling %d .styl files.\n" (count styl-files))
           (doseq [in styl-files]
@@ -104,8 +121,11 @@
                   in-path (c/tmp-path in)
                   out-path (.replaceAll in-path "\\.styl$" ".css")
                   out-file (io/file tmp out-path)]
+              ;; in order for stylus to not throw, the file needs to exist
+              (doto out-file io/make-parents c/touch)
               (println (str "Compiling " in-path " to " out-path "..."))
-              (write-style! in-file out-file))))
+              (binding [u/*sh-dir* (.getPath tmp)]
+                (u/dosh "./node_modules/.bin/stylus" "-o" (.getPath out-file) (.getPath in-file))))))
         (-> fileset
             (c/add-resource tmp)
             c/commit!)))))

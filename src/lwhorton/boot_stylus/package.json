@@ -1,7 +1,7 @@
 {
   "name": "boot-stylus",
   "version": "0.0.3",
-  "description": "\"Compile .styl to .css modules via boot, stylus, and postcss\"",
+  "description": "\"Compile .styl to clojurescript .css modules via boot, stylus, and postcss\"",
   "repository": {
     "type": "git",
     "url": "https://github.com/lwhorton/boot-stylus.git"
@@ -16,7 +16,7 @@
   "author": "lwhorton@me.com",
   "license": "MIT",
   "bin": {
-    "postcss": "./src/lwhorton/boot_stylus/postcss.js"
+    "run-postcss": "./src/lwhorton/boot_stylus/run_postcss.js"
   },
   "dependencies": {
     "postcss": "5.0.21",

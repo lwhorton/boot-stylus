@@ -9,10 +9,8 @@ css so much, I wanted to go one step further and utilize [stylus](http://stylus-
 
 ## How to use
 
-> ¡IMPORTANT!
+> ¡IMPORTANT! boot-stylus currently depends on node in order to run. As soon as someone decides to port a clojure css-modules generator, that dependency will go away.
 
-boot-stylus currently depends on two node modules: [postcss](https://github.com/postcss/postcss) and [stylus cli](http://stylus-lang.com/docs/executable.html). Before attempting
-anything below, install them by running `npm install -g` in the root of this repo (sorry I couldn't find a turn-key solution in the clojure-java world).
 
 List boot-stylus as a depencency:
 ```clojure
