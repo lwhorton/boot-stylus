@@ -76,6 +76,6 @@ That will ultimately render the html:
 
 ## Special Thanks
 
-A super-special thanks to @micha and @martinklepsch who were instrumental in explaining the
-intricacies of boot ( a really great idea once you get to know it ). Check out their work,
-they're both really talented and offer some great ideas for the clojure community.
+A super-special thanks to [@micha](https://github.com/micha) and [@martinklepsch](https://github.com/martinklepsch)
+ who were instrumental in explaining the intricacies of boot ( a really great idea once you get to know it ).
+Check out their work, they're both really talented and offer some great ideas for the clojure community.
