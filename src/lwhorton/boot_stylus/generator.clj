@@ -1,15 +1,5 @@
 (ns lwhorton.boot-stylus.generator
-  (:require [clojure.data.json :as json]
-            [clojure.java.io :as io]))
-
-(defn- strip-ext [file]
-  (subs file 0 (.lastIndexOf file ".")))
-
-(defn- parse-css-module [file]
-  (let [css (slurp file)
-        json-file (io/file (str (.getPath file) ".json"))
-        edn (json/read-str (slurp json-file :key-fn keyword))]
-    [edn css]))
+  (:require [clojure.data.json :as json]))
 
 (defn- create-namespace [name]
   (str "(ns " name " (:require [lwhorton.boot-stylus.runtime]))"))

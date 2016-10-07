@@ -2,14 +2,18 @@
   {:boot/export-tasks true}
   (:require
     [boot.core :as c :refer [deftask]]
+    [boot.task.built-in :refer [sift]]
     [clojure.java.io :as io]
     [clojure.java.shell :as sh]
     [boot.util :as u]
     [me.raynes.conch :as conch]
     [me.raynes.conch.low-level :as co]
     [lwhorton.boot-stylus.generator :as generator]
+    [clojure.java.io :refer [reader writer]]
     )
   )
+
+(def verbose false)
 
 (defn- get-namespace
   "Convert an out-path filepath like factors_context/factor_analyze/style.css
@@ -39,7 +43,7 @@
         hash-cache (c/cache-dir! ::css-modules)
         prev (atom nil)
         installed (atom false)]
-    (c/with-pre-wrap fileset
+    (c/with-pre-wrap [fileset]
       (let [diff (c/fileset-diff @prev fileset)
             in-files (c/input-files diff)
             css (c/by-ext [".css"] in-files)]
@@ -51,24 +55,27 @@
               (u/info "Installing necessary node deps...\n")
               (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
                     dest (io/file tmp "package.json")]
-                (spit dest (slurp pkg)))
+                (with-open [in (io/input-stream pkg)]
+                  (io/copy in dest)))
               (let [compiler (io/resource "lwhorton/boot_stylus/run_postcss.js")
                     dest (io/file tmp "run_postcss.js")]
-                (spit dest (slurp compiler)))
+                (with-open [in (io/input-stream compiler)]
+                  (io/copy in dest)))
               (binding [u/*sh-dir* (.getPath tmp)]
-                (u/dosh "npm" "install"))
+                (u/dosh "npm" "install" "--depth" "-1"))
               (reset! installed true)))
 
-          (u/info "Converting %d css-modules.\n" (count css))
+          (u/info "Converting %d css-modules...\n" (count css))
           (doseq [in css]
             (let [in-file (c/tmp-file in)
                   in-path (c/tmp-path in)
-                  out-path (str (.replaceAll in-path "\\.css$" ".cljs") )
+                  out-path (str (.replaceAll in-path "\\.css$" ".cljs"))
                   out-file (io/file tmp out-path)
                   namespace (get-namespace out-path)
                   hash (get-hash hash-cache in-path namespace)]
-              (u/info (str "Generated namespace for \"" in-path "\" is \"" namespace "\"\n"))
-              (u/info (str "Converting " in-path " to " out-path "...\n"))
+              (when verbose
+                (do (u/info (str "Generated namespace for \"" in-path "\" is \"" namespace "\"\n"))
+                    (u/info (str "Converting " in-path " to " out-path "...\n"))))
               (conch/with-programs [node]
                 (let [stdout (node "./run_postcss.js"
                                    (.getPath in-file)
@@ -83,20 +90,19 @@
                     (if (:err module)
                       (u/fail (:err module))
                       (doto out-file io/make-parents (spit module)))
-                    (u/fail "Something went wrong compiling: " in-path))))))))
-      (-> fileset
-          (c/add-resource hash-cache)
-          (c/add-resource tmp)
-          c/commit!))))
+                    (u/fail "Something went wrong compiling: " in-path)))))))
+        (-> fileset
+            (c/add-resource hash-cache)
+            (c/add-resource tmp)
+            c/commit!)))))
 
 (deftask compile-stylus
   "Compile all .styl files in the fileset into .css files"
   []
   (let [tmp (c/tmp-dir!)
         prev (atom nil)
-        hash-cache (c/cache-dir! ::css-modules)
         installed (atom false)]
-    (c/with-pre-wrap fileset
+    (c/with-pre-wrap [fileset]
       (let [diff (c/fileset-diff @prev fileset)
             in-files (c/input-files diff)
             styl-files (c/by-ext [".styl"] in-files)]
@@ -108,27 +114,44 @@
             (u/info "Installing necessary node deps...\n")
             (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
                   dest (io/file tmp "package.json")]
-              (spit dest (slurp pkg)))
+              (with-open [in (io/input-stream pkg)]
+                (io/copy in dest)))
             (binding [u/*sh-dir* (.getPath tmp)]
-              (u/dosh "npm" "install"))
+              (u/dosh "npm" "install" "--depth" "-1"))
             (reset! installed true)))
 
         ;; compile stylus into css
         (when (seq styl-files)
-          (u/info "Compiling %d .styl files.\n" (count styl-files))
-          (doseq [in styl-files]
-            (let [in-file (c/tmp-file in)
-                  in-path (c/tmp-path in)
-                  out-path (.replaceAll in-path "\\.styl$" ".css")
-                  out-file (io/file tmp out-path)]
-              ;; in order for stylus to not throw, the file needs to exist
-              (doto out-file io/make-parents c/touch)
-              (println (str "Compiling " in-path " to " out-path "..."))
-              (binding [u/*sh-dir* (.getPath tmp)]
-                (u/dosh "./node_modules/.bin/stylus" "-o" (.getPath out-file) (.getPath in-file))))))
+          (do
+            (when verbose (u/info "Compiling %d .styl files.\n" (count styl-files)))
+            (doseq [in styl-files]
+              (let [in-file (c/tmp-file in)
+                    in-path (c/tmp-path in)
+                    out-path (.replaceAll in-path "\\.styl$" ".css")
+                    out-file (io/file tmp out-path)]
+                ;; in order for stylus to not throw, the file needs to exist
+                (doto out-file io/make-parents c/touch)
+                (when verbose (println (str "Compiling " in-path " to " out-path "...")))
+                (binding [u/*sh-dir* (.getPath tmp)]
+                  (u/dosh "./node_modules/.bin/stylus" "-o" (.getPath out-file) (.getPath in-file)))))))
         (-> fileset
             (c/add-resource tmp)
             c/commit!)))))
+
+(deftask remove-leftovers
+  "Remove all files generated in the stylus task because all we really care
+  about as output is the cljs modules, and everything else was intermediary."
+  []
+  (c/with-pre-wrap [fs]
+    (let [in-files (c/input-files fs)
+          out-files (c/output-files fs)
+          css-files (c/by-ext [".css"] in-files)
+          other-files (concat (c/by-path ["package.json" "run_postcss.js"] in-files)
+                              (c/by-re [#"^node_modules*"] out-files))]
+      (-> fs
+          (c/rm css-files)
+          (c/rm other-files)
+          c/commit!))))
 
 (deftask stylus
   "Compile all .styl files into clojure modules following css-modules syntax."
@@ -136,4 +159,5 @@
   (comp
     (compile-stylus)
     (compile-css-modules)
-    identity))
+    ;(remove-leftovers)
+    ))

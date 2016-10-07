@@ -1,15 +1,23 @@
-(ns lwhorton.boot-stylus.runtime)
+(ns lwhorton.boot-stylus.runtime
+  (:require [goog.object :as g]))
+
+(def oset g/set)
+(def oget g/getValueByKeys)
 
 (defonce style-tags (atom {}))
 
 (defn- make-style-tag []
   (let [ele (.createElement js/document "style")
+        _ (oset ele "type" "text/css")
         head (.querySelector js/document "head")]
     (.appendChild head ele)
     ele))
 
 (defn- update-style-tag! [ele contents]
-  (set! (.-innerHTML ele) contents))
+  (let [css (.createTextNode js/document contents)
+        existing (oget ele "firstChild")]
+    (when existing (.removeChild ele existing))
+    (.appendChild ele css)))
 
 (defn- insert-style-tag! [id css]
   (let [ele (make-style-tag)]
