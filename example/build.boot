@@ -20,8 +20,8 @@
   '[adzerk.boot-reload :refer [reload]]
   )
 
-(deftask test
-  "Compile, test stylus, and serve"
+(deftask dev
+  "Test boot-stylus compilation, serving the output at localhost:3000"
   []
   (comp
     (watch)
