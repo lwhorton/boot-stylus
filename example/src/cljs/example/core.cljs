@@ -1,6 +1,7 @@
 (ns example.core
   (:require
     [example.styles :as s]
+    [example.base]
     [clojure.string :as str]
     ))
 

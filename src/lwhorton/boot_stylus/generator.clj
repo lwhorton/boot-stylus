@@ -16,7 +16,12 @@
 
 (defn- create-module-contents [namespace edn css]
   (let [head (create-namespace namespace)
-        body (reduce-kv #(str %1 (create-class %2 %3) "\n") "" edn)
+        ;; in the rare event that there is no edn parsed provided, a valid cljs
+        ;; module still needs a (def ...); this can happen if a css module only
+        ;; defines :global rules in a css file, for example.
+        body (reduce-kv #(str %1 (create-class %2 %3) "\n")
+                        (str (create-class "_only_globals" true) "\n")
+                        edn)
         footer (str-initializer namespace css)]
     (str head "\n" body "\n" footer)))
 

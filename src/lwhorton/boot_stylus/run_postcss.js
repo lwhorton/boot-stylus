@@ -19,7 +19,7 @@ function generateScopedName(name, filename, css) {
 
 fs.readFile(infile, function (err, data) {
     if (err) {
-        console.log(err)
+        process.stderr.write(err)
         process.exit(1)
     }
 

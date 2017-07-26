@@ -28,7 +28,7 @@
     (serve :dir "target")
     (reload)
     (stylus)
-    (cljs)
+    (cljs :compiler-options {:compiler-stats true})
     (target :dir #{"target"})))
 
 
