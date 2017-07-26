@@ -1,17 +1,24 @@
+(def +version+ "0.0.3-SNAPSHOT")
+
 (set-env!
   :resource-paths #{"src"}
   :dependencies '[
                   [org.clojure/clojure "1.8.0" :scope "provided"]
                   [me.raynes/conch "0.8.0"]
                   ]
-  :repositories #(conj % ["clojars" {:url "https://clojars.org/repo/"
-                                     :username (System/getenv "CLOJARS_USER")
-                                     :password (System/getenv "CLOJARS_PASS")}])
-  )
+  :repositories #(conj %
+                       ["clojars" {:url "https://clojars.org/repo/"
+                                   :username (System/getenv "CLOJARS_USER")
+                                   :password (System/getenv "CLOJARS_PASS")}]
+                       ["artifactory" {:url (or
+                                              (System/getenv "ARTIFACTORY_URL")
+                                              (str "http://104.198.42.43:8081/artifactory/libs-"
+                                                   (if (.contains +version+ "SNAPSHOT") "snapshot" "release")
+                                                   "-local"))
+                                       :username (System/getenv "ARTIFACTORY_USER")
+                                       :password (System/getenv "ARTIFACTORY_PASS")}]))
 
 (require '[boot.task.built-in :refer [push]])
-
-(def +version+ "0.0.3-SNAPSHOT")
 
 (deftask build
   "Build the jar in prep for deploy."
@@ -34,7 +41,7 @@
   []
   (comp
     (build)
-    (push :repo "clojars")))
+    (push :repo "artifactory")))
 
 (task-options!
   pom {:project 'lwhorton/boot-stylus
