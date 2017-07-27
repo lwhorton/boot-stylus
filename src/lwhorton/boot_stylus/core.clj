@@ -77,11 +77,9 @@
                 (binding [u/*sh-dir* (.getPath tmp)]
                   (u/dosh "./node_modules/.bin/stylus" "-o" (.getPath out-file) (.getPath in-file)))))))
 
-        (if (seq styl-files)
-          (-> fileset
-              (c/add-resource tmp)
-              c/commit!)
-          fileset)))))
+        (-> fileset
+            (c/add-resource tmp)
+            c/commit!)))))
 
 (deftask compile-css-modules
   "Compile all .css files into css-modules with a json manifest.
@@ -143,14 +141,14 @@
                         (doto out-file io/make-parents (spit module)))
                       (u/fail "Something went wrong compiling: " in-path))))))))
 
-        (if (seq css)
-         (do
-           (u/info (str "Finished compiling stylus, elapsed time: " (- (System/currentTimeMillis) @starttime) "ms\n"))
-           (-> fileset
+        (when (seq css)
+          (u/info (str "Finished compiling stylus, elapsed time: " (- (System/currentTimeMillis) @starttime) "ms\n")))
+
+        (-> fileset
             (c/add-resource hash-cache)
             (c/add-resource tmp)
-            c/commit!))
-          fileset)))))
+            c/commit!)
+        ))))
 
 (deftask remove-leftovers
   "Remove all files generated in the stylus task because all we really care
@@ -176,5 +174,5 @@
   (comp
     (compile-stylus)
     (compile-css-modules)
-    (remove-leftovers)
+    ;(remove-leftovers)
     ))
