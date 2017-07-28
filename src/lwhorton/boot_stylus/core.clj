@@ -164,7 +164,7 @@
                               (c/by-re [#"^node_modules*"] out-files))]
       (-> fs
           (c/rm css-files)
-          ;(c/rm hash-files)
+          (c/rm hash-files)
           (c/rm other-files)
           c/commit!))))
 
@@ -174,5 +174,5 @@
   (comp
     (compile-stylus)
     (compile-css-modules)
-    ;(remove-leftovers)
+    (remove-leftovers)
     ))
