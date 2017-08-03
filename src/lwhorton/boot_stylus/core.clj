@@ -7,14 +7,15 @@
     [clojure.java.shell :as sh]
     [boot.util :as u]
     [me.raynes.conch :as conch]
-    [me.raynes.conch.low-level :as co]
+    [degree9.boot-npm :as npm]
+    [degree9.boot-exec :as exec]
     [lwhorton.boot-stylus.generator :as generator]
     [clojure.java.io :refer [reader writer]]
     )
   )
 
 (def verbose false)
-(defonce starttime (atom (System/currentTimeMillis)))
+(def starttime (atom nil))
 
 (defn- get-namespace
   "Convert an out-path filepath like factors_context/factor_analyze/style.css
@@ -37,28 +38,18 @@
 (deftask compile-stylus
   "Compile all .styl files in the fileset into .css files"
   []
-  (let [installed? (atom false)
-        tmp (c/tmp-dir!)
+  (let [tmp (c/tmp-dir!)
         prev (atom nil)]
     (c/with-pre-wrap [fileset]
       (let [diff (c/fileset-diff @prev fileset :hash)
+            stylus-exec (first (c/by-re [#"^node_modules/\.bin/stylus"] (c/input-files fileset)))
+            _ (println "exec" stylus-exec)
+            stylus (.getPath (c/tmp-file stylus-exec))
             in-files (c/input-files diff)
             styl-files (c/by-ext [".styl"] in-files)]
+        ;(println "in-files" (doall (map #(.getPath (c/tmp-file %)) in-files)))
         (reset! prev fileset)
-        (when-not @installed?
-          (u/info "Installing necessary node deps...\n")
-          (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
-                dest (io/file tmp "package.json")]
-            (with-open [in (io/input-stream pkg)]
-              (io/copy in dest)))
-          (let [compiler (io/resource "lwhorton/boot_stylus/run_postcss.js")
-                dest (io/file tmp "run_postcss.js")]
-            (with-open [in (io/input-stream compiler)]
-              (io/copy in dest)))
-          (binding [u/*sh-dir* (.getPath tmp)]
-            (u/dosh "npm" "install" "--depth" "-1"))
-          (reset! installed? true)
-          (u/info "Installed node deps.\n"))
+        (println "root" (.getPath tmp))
 
         ;; compile stylus into css
         (when (seq styl-files)
@@ -75,7 +66,7 @@
                 (doto out-file io/make-parents c/touch)
                 (when verbose (println (str "Compiling " in-path " to " out-path "...")))
                 (binding [u/*sh-dir* (.getPath tmp)]
-                  (u/dosh "./node_modules/.bin/stylus" "-o" (.getPath out-file) (.getPath in-file)))))))
+                  (u/dosh stylus "-o" (.getPath out-file) (.getPath in-file)))))))
 
         (-> fileset
             (c/add-resource tmp)
@@ -89,28 +80,17 @@
   []
   (let [tmp (c/tmp-dir!)
         hash-cache (c/cache-dir! ::css-modules)
-        prev (atom nil)
-        installed? (atom false)]
+        prev (atom nil)]
     (c/with-pre-wrap [fileset]
       (let [diff (c/fileset-diff @prev fileset :hash)
+            post-css (first (c/by-name ["run_postcss.js"] (c/input-files fileset)))
+            node-modules (first (c/by-re [#"^node_modules/stylus"
+                                          #"^node_modules/postcss"
+                                          #"^node_modules/postcss-modules"] (c/input-files fileset)))
             in-files (c/input-files diff)
-            css (c/by-ext [".css"] in-files)]
+            css (c/by-ext [".css"] (c/by-re [#"^node_modules"] in-files true))]
+        (println "postcss" post-css)
         (reset! prev fileset)
-
-        (when-not @installed?
-          (u/info "Installing necessary node deps...\n")
-          (let [pkg (io/resource "lwhorton/boot_stylus/package.json")
-                dest (io/file tmp "package.json")]
-            (with-open [in (io/input-stream pkg)]
-              (io/copy in dest)))
-          (let [compiler (io/resource "lwhorton/boot_stylus/run_postcss.js")
-                dest (io/file tmp "run_postcss.js")]
-            (with-open [in (io/input-stream compiler)]
-              (io/copy in dest)))
-          (binding [u/*sh-dir* (.getPath tmp)]
-            (u/dosh "npm" "install" "--depth" "-1"))
-          (reset! installed? true)
-          (u/info "Installed node deps.\n"))
 
         (when (seq css)
           (do
@@ -125,12 +105,20 @@
                 (when verbose
                   (do (u/info (str "Generated namespace for \"" in-path "\" is \"" namespace "\"\n"))
                       (u/info (str "Converting " in-path " to " out-path "...\n"))))
+
+                (println "Executing run_postcss at " (.getPath (c/tmp-file post-css)) "in" (.getPath (c/tmp-dir node-modules))
+                         "for env" (.getPath tmp)
+                         )
+
+                ;; node scripts require that node_modules be at the root of the pwd
+                (spit (io/file (str (.getPath (c/tmp-dir node-modules)) "/run_postcss.js")) (slurp (c/tmp-file post-css)))
                 (conch/with-programs [node]
-                  (let [stdout (node "./run_postcss.js"
+                  (let [stdout (node (.getPath (c/tmp-file post-css))
                                      (.getPath in-file)
                                      (.getPath out-file)
                                      hash
-                                     {:dir (.getPath tmp)})]
+                                     {:dir (.getPath (c/tmp-dir node-modules))
+                                      :env {"NODE_PATH" (str (.getPath (c/tmp-dir node-modules)) "/node_modules")}})]
                     (when (or (empty? stdout) (nil? stdout))
                       (u/fail "\"" in-path "\" did not return any css..."))
                     ;; we can have two types of "errors" here -- an error emitted by the postcss parsing
@@ -159,19 +147,45 @@
     (let [in-files (c/input-files fs)
           out-files (c/output-files fs)
           css-files (c/by-ext [".css"] in-files)
-          hash-files (c/by-ext [".stylushash"] in-files)
-          other-files (concat (c/by-path ["package.json" "run_postcss.js"] in-files)
-                              (c/by-re [#"^node_modules*"] out-files))]
+          hash-files (c/by-ext [".stylushash"] out-files)]
       (-> fs
           (c/rm css-files)
           (c/rm hash-files)
-          (c/rm other-files)
           c/commit!))))
+
+;(deftask install-deps
+  ;"In order to run our compilation we need the run_postcss file inside the
+  ;consumer's source dirs."
+  ;[]
+  ;(let [tmp (c/tmp-dir!)]
+    ;(c/with-pre-wrap [fs]
+      ;(spit (str (.getPath tmp) "/run_postcss.js")
+            ;(slurp (io/resource "lwhorton/boot_stylus/run_postcss.js")))
+      ;(-> fs
+          ;(c/add-source tmp)
+          ;(c/commit!)))))
+
+(deftask install-deps
+  []
+  (comp
+    (let [tmp (c/tmp-dir!)]
+      (c/with-pre-wrap [fs]
+        (spit (str (.getPath tmp) "/run_postcss.js")
+              (slurp (io/resource "lwhorton/boot_stylus/run_postcss.js")))
+        (-> fs
+            (c/add-source tmp)
+            (c/commit!))))
+    ;(npm/npm :install {:postcss "5.0.21"
+                       ;:postcss-modules "0.5.0"
+                       ;:stylus "0.54.5"}
+             ;:cache-key ::cache)
+    ))
 
 (deftask stylus
   "Compile all .styl files into clojure modules following css-modules syntax."
   []
   (comp
+    (install-deps)
     (compile-stylus)
     (compile-css-modules)
     (remove-leftovers)
