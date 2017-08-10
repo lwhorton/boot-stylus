@@ -2,8 +2,10 @@
   (:require
     [example.styles :as s]
     [example.base]
+    [react-table :as react-table]
     [clojure.string :as str]
-    ))
+    )
+  )
 
 (def document js/document)
 

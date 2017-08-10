@@ -48,7 +48,7 @@
             stylus-mods (c/by-re [#"^node_modules/stylus"] (c/input-files fileset))
             stylus-exec (first (c/by-name ["stylus"] stylus-mods))
             in-files (c/input-files diff)
-            styl-files (c/by-ext [".styl"] in-files)]
+            styl-files (c/by-ext [".styl"] (c/by-re [#"^node_modules"] in-files true))]
         (reset! prev fileset)
 
         ;; compile stylus into css
@@ -66,10 +66,11 @@
                 (doto out-file io/make-parents c/touch)
                 (when verbose (println (str "Compiling " in-path " to " out-path "...")))
                 (binding [u/*sh-dir* (.getPath (c/tmp-dir stylus-exec))]
-                  (u/dosh "./node_modules/stylus/bin/stylus"
-                          "-o"
-                          (.getPath out-file)
-                          (.getPath in-file)))))))
+                  (apply u/dosh (concat
+                                  ["./node_modules/stylus/bin/stylus"]
+                                  ["-o"
+                                   (.getPath out-file)
+                                   (.getPath in-file)])))))))
 
         (-> fileset
             (c/add-resource tmp)
@@ -89,7 +90,9 @@
             post-css (first (c/by-name ["run_postcss.js"] (c/input-files fileset)))
             node-modules (first (c/by-re [#"^node_modules"] (c/input-files fileset)))
             in-files (c/input-files diff)
-            css (c/by-ext [".css"] (c/by-re [#"^node_modules"] in-files true))]
+            ;; compile all css, but exclude node_modules and cljsjs paths
+            css (c/by-ext [".css"] (c/by-re [#"cljsjs" #"^node_modules"] in-files true))]
+        (println "compiling" (apply str (map #(str (.getPath (c/tmp-file %)) "\t") css)))
         (reset! prev fileset)
 
         (when (seq css)
@@ -144,23 +147,17 @@
     (let [in-files (c/input-files fs)
           out-files (c/output-files fs)
           css-files (c/by-ext [".css"] in-files)
-          hash-files (c/by-ext [".stylushash"] out-files)]
+          hash-files (c/by-ext [".stylushash"] out-files)
+          node-modules (c/by-re [#"^node_modules/.*"] (c/input-files fs))
+          other-files (c/by-path ["run_postcss.js"
+                                  "package-lock.json"
+                                  "package.json"] in-files)]
       (-> fs
           (c/rm css-files)
           (c/rm hash-files)
+          (c/rm node-modules)
+          (c/rm other-files)
           c/commit!))))
-
-;(deftask install-deps
-  ;"In order to run our compilation we need these files inside the
-  ;consumer's source dirs so they can be consumed."
-  ;[]
-  ;(let [tmp (c/tmp-dir!)]
-    ;(c/with-pre-wrap [fs]
-      ;(spit (str (.getPath tmp) "/run_postcss.js")
-            ;(slurp (io/resource "lwhorton/boot_stylus/run_postcss.js")))
-      ;(-> fs
-          ;(c/add-source tmp)
-          ;(c/commit!)))))
 
 (deftask install-deps
   []

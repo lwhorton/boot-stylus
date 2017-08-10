@@ -1,0 +1,4 @@
+{:compiler-options {
+                    :main example.core
+                    :asset-path "js/main.out"
+                    :compiler-stats true}}
